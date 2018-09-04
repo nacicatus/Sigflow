@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SIP Sequence Diagram</title>
+    <meta charset='utf-8'> 
+  </head>
+  <body onclick="onClick(event)" onmousemove="onMouseMove(event)" style="background-color: #bg_color">
+    <style type="text/css">
+    * {
+       margin: 0;
+       padding: 0;
+    }
+    </style>
+    <canvas id='canvas_id' width='#width' height='#height'>
+	If you see this that means that your browser doesn't support the HTML5 canvas elements.
+    </canvas>
+    <script type='text/javascript'>
+    function onClick(e) {
+        var position = getMousePosition(e);
+        checkClickSnapshot(position);
+        checkClickMessage(position);
+        return false;
+    }
+
+    function checkClickMessage(position) {
+        for (var i = 0; i < messages.length; i++) {
+            var msg = messages[i];
+            if (msg.x1 == msg.x2) {
+                x1 = msg.x1;
+                x2 = x1 + node_distance;            
+            } else if (msg.x1 > msg.x2) {
+                x1 = msg.x2;
+                x2 = msg.x1;            
+            } else {
+                x1 = msg.x1;
+                x2 = msg.x2;
+            }
+            if (position.x >= x1 + 11 && position.x <= x2 - 11 && position.y >= msg.y1 && position.y <= msg.y2) {
+                displayMessage(msg);
+                break;
+            } 
+        }
+    }
+
+    function checkClickSnapshot(position) {
+        for (var i = 0; i < snapshots.length; i++) {
+            var snapshot = snapshots[i];
+            if (position.x >= snapshot.x - 10 && position.x <= snapshot.x + 10 && position.y >= snapshot.y1 && position.y <= snapshot.y2) {
+                displaySnapshot(snapshot);
+                break;
+            } 
+        }
+    }
+
+    function onMouseMove(e) {
+        var position = getMousePosition(e);
+        checkSnapshotHover(position);    
+        checkMessageHover(position);
+        return false;
+    }
+
+    function checkSnapshotHover(position) {
+        for (var i = 0; i < snapshots.length; i++) {
+            var snapshot = snapshots[i];
+            if (position.x >= snapshot.x - 10 && position.x <= snapshot.x + 10 && position.y >= snapshot.y1 && position.y <= snapshot.y2) {
+                if (!snapshot.mouse_over) {
+                    setSelectColor();
+                    drawSnapshot(snapshot);
+                    snapshot.mouse_over = true;
+                }
+            } else {
+                if (snapshot.mouse_over) {
+                    setLineColor();
+                    drawSnapshot(snapshot);
+                    snapshot.mouse_over = false;
+                }
+            } 
+        }
+    }
+    
+    function checkMessageHover(position) {
+        for (var i = 0; i < messages.length; i++) {
+            var msg = messages[i];
+            if (msg.x1 == msg.x2) {
+                x1 = msg.x1;
+                x2 = x1 + node_distance;            
+            } else if (msg.x1 > msg.x2) {
+                x1 = msg.x2;
+                x2 = msg.x1;            
+            } else {
+                x1 = msg.x1;
+                x2 = msg.x2;
+            }
+            if (position.x >= x1 + 11 && position.x <= x2 - 11 && position.y >= msg.y1 && position.y <= msg.y2) {
+                if (!msg.mouse_over) {
+                    setSelectColor();
+                    drawMessage(msg);
+                    msg.mouse_over = true;
+                }
+            } else {
+                if (msg.mouse_over) {
+                    setLineColor();
+                    drawMessage(msg);
+                    msg.mouse_over = false;
+                }
+            }            
+        }
+    }
+
+    function getMousePosition(e) {
+        var evt = e ? e: window.event;
+        var point = new Object();
+        point.x = 0;
+        point.y = 0;
+        if ((evt.clientX || evt.clientY) &&
+            document.body &&
+            document.body.scrollLeft != null) {
+            point.x = evt.clientX + document.body.scrollLeft;
+            point.y = evt.clientY + document.body.scrollTop;
+        }
+        if ((evt.clientX || evt.clientY) &&
+            document.compatMode == 'CSS1Compat' && 
+            document.documentElement && 
+            document.documentElement.scrollLeft != null) {
+            point.x = evt.clientX + document.documentElement.scrollLeft;
+            point.y = evt.clientY + document.documentElement.scrollTop;
+        }
+        if (evt.pageX || evt.pageY) {
+            point.x = evt.pageX;
+            point.y = evt.pageY;
+        }
+        return point;
+    }
+
+    function displayMessage(msg) {
+        parent.messageFrame.location.href = msg.link;
+    }
+
+    function displaySnapshot(snapshot) {
+        parent.messageFrame.location.href = snapshot.link;
+    }
+
+    function setCanvasSize() {
+        time = time_step * 2;
+        for (var i = 0; i < messages.length; i++) {
+            var msg = messages[i];
+            if (i > 0) {
+                var prev_message = messages[i - 1];
+                increaseTime(msg, prev_message);
+            }
+        }
+        canvas.height = y_start * 2 + time + time_step;
+        canvas.width = (num_nodes - 1) * node_distance + 2 * x_start;
+        //Prevent browser crashing because of size
+        if (canvas.width > 32767)
+        {
+            canvas.width = 32767;
+        }
+        if (canvas.height > 32767)
+        {
+            canvas.height = 32767;
+        }
+        if (canvas.width * canvas.height > 268435456)
+        {
+            if (canvas.width > 16384)
+            {
+                if (canvas.height > 16384)
+                {
+                    canvas.width = 16384;
+                    canvas.height = 16384;
+                }
+                else
+                {
+                    canvas.width = Math.floor(268435456 / canvas.height);
+                }
+            }
+            else
+            {
+                canvas.height = Math.floor(268435456 / canvas.width);
+            }
+        }
+    }
+
+    function drawArrow(ctx, x1, y1, x2, y2, caption, text, timestamp) {
+        var x_text = 0;
+        var y_text = y1 - 5;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        if (x2 > x1) {
+            ctx.lineTo(x2 - 2, y2);
+            ctx.lineTo(x2 - 12, y2 - 4);
+            ctx.lineTo(x2 - 12, y2 + 4);
+            ctx.lineTo(x2, y2);
+            x_text = x1 + 15;
+        } else {
+            ctx.lineTo(x2 + 2, y2);
+            ctx.lineTo(x2 + 12, y2 - 4);
+            ctx.lineTo(x2 + 12, y2 + 4);
+            ctx.lineTo(x2, y2);
+            if (x1 == x2 && y1 == y2) {
+                x_text = x2 + 25;
+            } else {
+                x_text = x2 + 15;
+            }
+        }
+        ctx.textAlign = "start";
+        ctx.font = "14px Arial Narrow";
+        lines = toMultiLine(text);
+        ctx.fillText(caption + ' ' + lines[0].substring(0, 18) /*+ " [" + lines[1] + ']'*/, x_text, y_text);
+        ctx.font = "12px Arial Narrow";
+        ctx.textAlign = "center";
+        ctx.fillText(timestamp, x_start - 50, y1);
+        ctx.fillText(timestamp, canvas.width - 50, y1);
+        ctx.stroke();
+        ctx.fill();
+        ctx.closePath();
+        if (x1 == x2 && y1 == y2) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.bezierCurveTo(x1 + 10, y1 - 40, x1 + 40, y1 + 10, x1, y2);
+            ctx.stroke();
+            ctx.closePath();
+        }
+    }
+
+    function toMultiLine(text){
+        var textArr = new Array();
+        text = text.replace(/\n\r?/g, '<br>');
+        textArr = text.split("<br>");
+        return textArr;
+    }
+
+    function drawLine(x1, y1, x2, y2) {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.closePath();
+    }
+
+    function getColorIndex(end_to_end_id) {
+        var end_to_end_call = end_to_end_calls[end_to_end_id]
+        if (end_to_end_call == null) {
+            end_to_end_calls[end_to_end_id] = ++num_end_to_end_calls;
+            end_to_end_call = num_end_to_end_calls;
+        }
+        return end_to_end_call;
+    }
+
+    function setLineColor() {
+        var color; 
+        if (darkBackground) {
+            color = 'rgb(255,255,255)';
+        } else {  
+            color = 'rgb(0,0,0)';
+        }
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+    }
+    
+    function setSelectColor() {
+        var color; 
+        if (darkBackground) {
+            color = 'rgb(0,0,0)';
+        } else {  
+            color = 'rgb(255,255,255)';
+        }
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+    }
+
+    function getBackgroundColor(color_index) {
+        var colors;
+        if (darkBackground) {
+            colors = ['rgb(80, 80, 80)', 'rgb(110, 70, 80)', 'rgb(40, 80, 90)', 'rgb(60,100,60)', 'rgb(100, 100, 60)', 'rgb(102, 89, 56)', 'rgb(102, 56, 89)'];
+        } else {
+            colors = ['rgb(255, 182, 193)', 'rgb(200, 255, 200)', 'rgb(255,255,190)', 'rgb(210, 210, 210)', 'rgb(112, 224, 255)', 'rgb(255, 220, 140)', 'rgb(255, 140, 220)'];
+        }
+        var color = colors[(color_index - 1) % colors.length];
+        return color;    
+    }
+
+    function getMessageDirection(msg) {
+        if (nodes[msg.destination].index - nodes[msg.source].index > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function increaseTime(msg, prev_message) {
+        if ((prev_message.source != msg.source && prev_message.destination != msg.destination &&
+             prev_message.source != msg.destination && prev_message.destination != msg.source)) {
+            time += 2 * time_step;
+        } else {
+            time += time_step;    
+            if ((prev_message.source == msg.source && 
+                 getMessageDirection(prev_message) == getMessageDirection(msg)) ||
+                (prev_message.destination == msg.source && 
+                 getMessageDirection(prev_message) != getMessageDirection(msg)) ||
+                (prev_message.destination == msg.destination && 
+                 getMessageDirection(prev_message) == getMessageDirection(msg)) ||
+                (prev_message.source == msg.destination && 
+                 getMessageDirection(prev_message) != getMessageDirection(msg))) {
+                time += time_step;
+            }
+        }
+    }
+
+    function drawBackground() {
+        if (darkBackground) {
+            var color = 'rgb(55,55,55)';
+        } else {
+            var color = 'rgb(230,230,230)';
+        }
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+        ctx.rect(0, 0, canvas.width, canvas.height);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        drawColorCodedCalls();   
+    }
+    
+    function drawColorCodedCalls() {
+        time = time_step * 2;
+        var prev_color_index = -1;
+        var call_y_start = y_start;
+        var call_x_start = 32000;
+        var call_x_end = -1;
+        for (var i = 0;; i++) {
+            var msg = messages[i];
+            if (i > 0) {
+                var prev_message = messages[i - 1];
+                increaseTime(msg, prev_message);
+                var x1 = nodes[prev_message.source].index * node_distance + x_start;
+                var x2 = nodes[prev_message.destination].index * node_distance + x_start;
+                if (x1 < call_x_start) {
+                    call_x_start = x1;
+                }
+                if (x2 < call_x_start) {
+                    call_x_start = x2;
+                }
+                if (x1 > call_x_end) {
+                    call_x_end = x1;
+                }
+                if (x2 > call_x_end) {
+                    call_x_end = x2;
+                }
+            }
+            var color_index = getColorIndex(msg.end_to_end_id);
+            if (color_index != prev_color_index && prev_color_index != -1 || i == messages.length - 1) {
+                var call_y_end = y_start + time - time_step;
+                ctx.beginPath();
+                var color = getBackgroundColor(prev_color_index);
+                ctx.fillStyle = color;
+                ctx.strokeStyle = color;
+                ctx.rect(0,//call_x_start, 
+                         call_y_start, 
+                         canvas.width, //call_x_end - call_x_start, 
+                         call_y_end - call_y_start); //+ (time_step * 2));
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();          
+                call_y_start = call_y_end;
+                call_x_start = 32000;
+                call_x_end = -1;
+            }
+            if (i == messages.length - 1) {
+                ctx.beginPath();
+                var color = getBackgroundColor(color_index);
+                ctx.fillStyle = color;
+                ctx.strokeStyle = color;
+                ctx.rect(0,//call_x_start, 
+                         call_y_start, 
+                         canvas.width, //call_x_end - call_x_start, 
+                         call_y_end - call_y_start + (time_step * 2));
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath(); 
+                break;
+            }
+            prev_color_index = color_index;
+        }
+    }
+
+    function drawMessages() {
+        var prev_snapshot_id = -1;
+        time = time_step * 2;
+        for (var i = 0; i < messages.length; i++) {
+            var msg = messages[i];
+            msg.x1 = nodes[msg.source].index * node_distance + x_start;
+            msg.x2 = nodes[msg.destination].index * node_distance + x_start;
+            if (i > 0) {
+                var prev_message = messages[i - 1];
+                increaseTime(msg, prev_message);
+            }
+            msg.y2 = y_start + time;
+            msg.y1 = msg.y2 - 25;
+            setLineColor();
+            drawMessage(msg);
+            msg.mouse_over = false;            
+            if (msg.snapshot_id != -1) {
+                var snapshot = snapshot_map[msg.snapshot_id];
+                if (snapshot) {
+                    snapshot.mouse_over = false;            
+                    if (msg.snapshot_id != prev_snapshot_id) {
+                        if (i != 0) {
+                            var prev_snapshot = snapshot_map[prev_snapshot_id];
+                            if (prev_snapshot) {
+                                prev_snapshot.y2 =  msg.y1 + time_step/4;
+                            }
+                        }
+                        if (nodes[msg.source].mtas) {
+                            snapshot.x = msg.x1;
+                        } else {
+                            snapshot.x = msg.x2;
+                        }
+                        snapshot.y1 = msg.y1 + time_step/4;                    
+                    }
+                }
+                prev_snapshot_id = msg.snapshot_id;
+            }
+        }
+    }
+    
+    function drawMessage(msg) {
+        drawArrow(ctx, msg.x1, msg.y2, msg.x2, msg.y2, msg.caption, msg.text, msg.timestamp);
+    }
+
+    function drawSnapshot(snapshot) {
+        drawLine(snapshot.x, snapshot.y1, snapshot.x, snapshot.y2);
+    }
+
+    function calcNodeIndexes() {
+        for (var i = 0; i < messages.length; i++) {
+            var msg = messages[i];
+            if (nodes[msg.source] == null) {
+                nodes[msg.source] = create_node(msg.source);
+            }
+            if (nodes[msg.destination] == null) {
+                nodes[msg.destination] = create_node(msg.destination);
+            }
+            if (msg.caption.indexOf("INVITE") !== -1) {
+                var source_node = nodes[msg.source];
+                if (source_node.call_initiator == undefined) {
+                    source_node.call_initiator = true;
+                }
+                var destination_node = nodes[msg.destination];
+                if (destination_node.call_initiator == undefined) {
+                    destination_node.call_initiator = false;
+                }
+            }
+        }
+        var node_array = new Array();
+        for (var node_name in nodes) {
+            var node = nodes[node_name];
+            node_array[node.index] = node;
+        }
+        node_array.sort(compare_nodes);
+        for (var i = 0; i < num_nodes; i++) {
+            var node = node_array[i];
+            node.index = i;
+        }
+    }
+
+    function create_node(node_name) {
+        var node = new Object;
+        node.index = num_nodes++;
+        if (node_name.indexOf("AS") !== -1) {
+            node.mtas = true;
+        } else {
+            node.mtas = false;
+        }
+        return node;
+    }
+
+    function compare_nodes(a, b) {
+        if ((a.call_initiator && b.call_initiator) || (a.mtas && b.mtas)) {
+            return 0;
+        } else if (a.call_initiator) {
+            return -1;
+        } else if (b.call_initiator) {
+            return 1;
+        } else if (a.mtas) {
+            return -1;
+        } else if (b.mtas) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    function drawNodes() {
+        if (darkBackground) {
+            var color = 'rgb(20,20,20)';
+        } else {
+            var color = 'rgb(200,200,200)';
+        }
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+
+        ctx.beginPath();
+        ctx.rect(0, 0, canvas.width, y_start);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        ctx.beginPath();
+        ctx.rect(0, y_start + time + time_step, canvas.width, y_start);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+
+        setLineColor();
+        ctx.font = "14px Arial Narrow";
+        ctx.textAlign = "center";
+        for (var node in nodes)
+        {
+            var x = x_start + nodes[node].index * node_distance;
+            var node_label = node.substring(0, 27);
+            ctx.fillText(node_label, x, y_start - 13);
+            ctx.fillText(node_label, x, y_start + time + time_step + 25);
+            drawLine(x, y_start, x, y_start + time + time_step);
+        }
+    }
+
+    function initSnapshotMap() {
+        for (var i = 0; i < snapshots.length; i++) {
+            var snapshot = snapshots[i];
+            snapshot_map[snapshot.id] = snapshot;
+        }
+    }
+
+
+    var canvas = document.getElementById("canvas_id");
+    var ctx = canvas.getContext('2d');
+    ctx.lineWidth = 2.0;
+
+    var darkBackground = DARK;
+    var x_start = 100;
+    var y_start = 50;
+    var node_distance = 200;
+    var time_step = 15;
+    var time = time_step * 2;
+    var num_nodes = 0;
+    
+    options = // Options string go here
+    hidden = // Available string go here
+    if (hidden) {
+        y_start += 20;
+    }
+
+    var messages = [
+// Messages go here
+    ];
+
+    var snapshots = [
+// Snapshots go here
+    ];
+    var snapshot_map = new Object;
+    initSnapshotMap();
+
+    var nodes = new Object;
+
+    calcNodeIndexes();
+    setCanvasSize();
+
+    var end_to_end_calls = new Object;
+    var num_end_to_end_calls = 0;
+
+    drawBackground();
+    drawMessages();
+    drawNodes();
+    
+    ctx.textAlign = "start";
+    ctx.fillText("Options: " + options, 3, 3 + 10);
+    if (hidden) {
+        ctx.fillText("Hidden messages: " + hidden, 3, 3 + 10 + 20);
+    }
+
+    if (window.innerWidth > canvas.width) {
+        top.window.document.getElementById('frames').cols = canvas.width + ',*';
+    }
+
+    displayMessage(messages[0]);
+
+  </script>
+  </body>
+</html>
+
