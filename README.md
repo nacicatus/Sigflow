@@ -1,11 +1,6 @@
 # Sigflow 
 ## Introduction:
 
-Sigflow is a tool visualizing MTAS related signalling sequences from a PCAP file, processor or event history log.
-
-MTAS roles supported: Tel AS (incl Business Line), SCC AS, ST AS and NW AS
-Interfaces supported: Isc/Ma (SIP), Dh/Sh (Diameter), Rf/Ro (Diameter), Mp (H.248), Mr (SIP), CAT (SIP), CAMEL (TCAP)
-
 Sigflow will by default search for all available MTAS roles and interface signals found in the trace. Selected interfaces are presented in the sequence diagram while available interfaces are listed at the top of the diagram together with the list of parameters used in the analysis of the input file. 
 In case Sigflow cannot identify what role of MTAS a signal is related to, the default role 'AS' will be used.
 Each call (combination To/From headers) is presented in the sequence with a specific colour. The details of each signal is presented in the window on the right hand side, by clicking on the signal of interest. Specific signal captions are used to provide more details of the signal like 1) whether an INVITE is the initial or re-INVITE, 2) if a message includes SDP, 3) early dialog indication etc. 
@@ -62,3 +57,8 @@ Set sequence diagram background color to dark grey.
 -T, --methodflow
 For log files containing method trace. Incoming messages will contain help with running the Methodflow program on the log file lines until the next incoming message.
 
+
+Sigflow is a tool visualizing MTAS related signalling sequences from a PCAP file, processor or event history log.
+
+MTAS roles supported: Tel AS (incl Business Line), SCC AS, ST AS and NW AS
+Interfaces supported: Isc/Ma (SIP), Dh/Sh (Diameter), Rf/Ro (Diameter), Mp (H.248), Mr (SIP), CAT (SIP), CAMEL (TCAP)
